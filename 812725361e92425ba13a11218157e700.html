@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TokenForge · Konsol Pengembangan Token (GitHub App)</title>
+<meta name="description" content="Konsol simulasi pengembangan token: konfigurasi smart contract, tokenomics, audit & kepatuhan.">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+:root{
+  --bg:#202024;--card:#2a2a2f;--text:#e8e5df;--muted:#9a978f;
+  --accent:#c47046;--accent-soft:rgba(196,112,70,.16);
+  --accent2:#7ba8b8;--accent2-soft:rgba(123,168,184,.16);
+  --border:rgba(232,229,223,.12);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace}
+.reveal{opacity:0;transform:translateY(16px);animation:fadeUp .55s ease forwards}
+.reveal:nth-child(2){animation-delay:.08s}.reveal:nth-child(3){animation-delay:.16s}
+.reveal:nth-child(4){animation-delay:.24s}.reveal:nth-child(5){animation-delay:.32s}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+.metric-card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.metric-card:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,.35);border-color:var(--accent)}
+.tab-btn{transition:all .18s ease;border-bottom:2px solid transparent}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent);background:var(--accent-soft)}
+.alloc-slider{accent-color:#c47046;width:100%;height:4px;cursor:pointer}
+.audit-check{accent-color:#c47046;width:18px;height:18px;cursor:pointer}
+.step-done .step-dot{background:var(--accent);border-color:var(--accent)!important}
+.step-current .step-dot{border-color:var(--accent)!important;animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px var(--accent-soft)}50%{box-shadow:0 0 0 9px rgba(196,112,70,.04)}}
+.tbl-row{transition:background .15s ease}
+.tbl-row:hover{background:rgba(123,168,184,.07)}
+input[type=text],input[type=number],select{
+  background:#1a1a1e;border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:9px 12px;font-size:14px;width:100%;outline:none;transition:border-color .15s;font-family:inherit}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:#1a1a1e;font-weight:600;border-radius:8px;padding:10px 20px;transition:all .18s;cursor:pointer;border:none;font-family:inherit;font-size:14px}
+.btn-primary:hover{background:#d48056;transform:translateY(-1px)}
+.step-line{border-left:2px solid var(--border);margin-left:11px;padding-left:24px;position:relative}
+.step-line.done{border-left-color:var(--accent)}
+.step-dot{position:absolute;left:-12px;top:2px;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;z-index:1}
+</style>
+</head>
+<body>
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- HEADER -->
+  <div class="reveal flex flex-wrap items-center justify-between gap-4 mb-8 pb-6" style="border-bottom:1px solid var(--border)">
+    <div class="flex items-center gap-3">
+      <div style="width:46px;height:46px;border-radius:12px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold m-0" style="letter-spacing:-0.02em">TokenForge</h1>
+        <p class="text-xs m-0 mt-1" style="color:var(--muted)">GitHub App · Konsol Pengembangan Token</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style="background:var(--card);border:1px solid var(--border)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--muted)"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.7 5.39-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+      <span class="mono">org/token-proyek</span>
+      <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block"></span>
+      <span style="color:#4ade80">Terhubung</span>
+    </div>
+  </div>
+
+  <!-- KPI METRICS -->
+  <div class="reveal flex flex-wrap gap-4 mb-8">
+    <div class="metric-card rounded-2xl p-5" style="flex:1 1 180px;min-width:160px;background:var(--card);border:1px solid var(--border)">
+      <div class="flex items-center gap-2 mb-2">
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </div>
+        <span class="text-xs uppercase tracking-wide" style="color:var(--muted)">Tahap Aktif</span>
+      </div>
+      <div class="text-xl font-bold">4 · Audit Keamanan</div>
+      <div class="text-xs mt-1" style="color:var(--accent2)">3 dari 7 tahap selesai</div>
+    </div>
+    <div class="metric-card rounded-2xl p-5" style="flex:1 1 180px;min-width:160px;background:var(--card);border:1px solid var(--border)">
+      <div class="flex items-center gap-2 mb-2">
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <span class="text-xs uppercase tracking-wide" style="color:var(--muted)">Skor Audit</span>
+      </div>
+      <div class="text-xl font-bold">86 / 100</div>
+      <div class="text-xs mt-1" style="color:#4ade80">2 issue kritis · 0 tinggi</div>
+    </div>
+    <div class="metric-card rounded-2xl p-5" style="flex:1 1 180px;min-width:160px;background:var(--card);border:1px solid var(--border)">
+      <div class="flex items-center gap-2 mb-2">
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+        </div>
+        <span class="text-xs uppercase tracking-wide" style="color:var(--muted)">Alokasi Token</span>
+      </div>
+      <div class="text-xl font-bold">6 keranjang</div>
+      <div class="text-xs mt-1" style="color:var(--accent2)">Vesting 36 bulan · cliff 12</div>
+    </div>
+    <div class="metric-card rounded-2xl p-5" style="flex:1 1 180px;min-width:160px;background:var(--card);border:1px solid var(--border)">
+      <div class="flex items-center gap-2 mb-2">
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </div>
+        <span class="text-xs uppercase tracking-wide" style="color:var(--muted)">Jaringan</span>
+      </div>
+      <div class="text-xl font-bold" id="kpi-network">Ethereum · ERC-20</div>
+      <div class="text-xs mt-1" style="color:var(--muted)">Gas: ETH · paling matang</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="reveal flex flex-wrap gap-1 mb-6 rounded-xl p-1" style="background:var(--card);border:1px solid var(--border)">
+    <button class="tab-btn active flex-1 px-4 py-2.5 rounded-lg text-sm font-medium" data-tab="ringkasan" style="color:var(--muted);min-width:120px">Ringkasan</button>
+    <button class="tab-btn flex-1 px-4 py-2.5 rounded-lg text-sm font-medium" data-tab="konfigurasi" style="color:var(--muted);min-width:120px">Konfigurasi Token</button>
+    <button class="tab-btn flex-1 px-4 py-2.5 rounded-lg text-sm font-medium" data-tab="tokenomics" style="color:var(--muted);min-width:120px">Tokenomics</button>
+    <button class="tab-btn flex-1 px-4 py-2.5 rounded-lg text-sm font-medium" data-tab="audit" style="color:var(--muted);min-width:120px">Audit &amp; Kepatuhan</button>
+  </div>
+
+  <!-- PANEL: RINGKASAN -->
+  <div class="tab-panel reveal rounded-2xl p-6 md:p-8 mb-6" id="ringkasan" style="background:var(--card);border:1px solid var(--border)">
+    <h2 class="text-lg font-semibold mb-6 mt-0">Alur Pengembangan · 7 Tahap</h2>
+    <div>
+      <div class="step-line done step-done pb-6"><div class="step-dot"><span style="color:#1a1a1e;font-size:11px;font-weight:700">✓</span></div><p class="font-semibold text-sm m-0">Ide &amp; Whitepaper</p><p class="text-xs m-0 mt-1" style="color:var(--muted)">Dokumen visi, use case, dan model ekonomi selesai direview.</p></div>
+      <div class="step-line done step-done pb-6"><div class="step-dot"><span style="color:#1a1a1e;font-size:11px;font-weight:700">✓</span></div><p class="font-semibold text-sm m-0">Desain Tokenomics</p><p class="text-xs m-0 mt-1" style="color:var(--muted)">Alokasi, vesting, dan jadwal unlock tervalidasi (lihat tab Tokenomics).</p></div>
+      <div class="step-line done step-done pb-6"><div class="step-dot"><span style="color:#1a1a1e;font-size:11px;font-weight:700">✓</span></div><p class="font-semibold text-sm m-0">Pengembangan Smart Contract</p><p class="text-xs m-0 mt-1" style="color:var(--muted)">Kontrak berbasis OpenZeppelin, unit test lulus 100%.</p></div>
+      <div class="step-line step-current pb-6"><div class="step-dot"></div><p class="font-semibold text-sm m-0" style="color:var(--accent)">Audit Keamanan <span class="text-xs font-normal" style="color:var(--muted)">· berlangsung</span></p><p class="text-xs m-0 mt-1" style="color:var(--muted)">Auditor eksternal: 2 issue kritis sedang diperbaiki.</p></div>
+      <div class="step-line pb-6"><div class="step-dot"></div><p class="font-semibold text-sm m-0" style="color:var(--muted)">Testnet &amp; Bug Bounty</p><p class="text-xs m-0 mt-1" style="color:var(--muted)">Menunggu audit selesai.</p></div>
+      <div class="step-line pb-6"><div class="step-dot"></div><p class="font-semibold text-sm m-0" style="color:var(--muted)">Mainnet Launch</p><p class="text-xs m-0 mt-1" style="color:var(--muted)">Deploy kontrak &amp; verifikasi di explorer.</p></div>
+      <div class="step-line" style="border-left-color:transparent"><div class="step-dot"></div><p class="font-semibold text-sm m-0" style="color:var(--muted)">Listing &amp; Pasca-launch</p><p class="text-xs m-0 mt-1" style="color:var(--muted)">DEX/CEX listing, liquidity locking, komunikasi komunitas.</p></div>
+    </div>
+  </div>
+
+  <!-- PANEL: KONFIGURASI -->
+  <div class="tab-panel reveal rounded-2xl p-6 md:p-8 mb-6" id="konfigurasi" style="background:var(--card);border:1px solid var(--border);display:none">
+    <h2 class="text-lg font-semibold mb-6 mt-0">Konfigurasi Smart Contract</h2>
+    <div class="flex flex-wrap gap-6">
+      <div style="flex:1 1 300px;min-width:260px" class="space-y-4">
+        <div><label class="text-xs font-medium block mb-1.5" style="color:var(--muted)">Nama Token</label><input type="text" id="cfg-name" value="Nusantara Coin" placeholder="mis. Nusantara Coin"></div>
+        <div class="flex gap-4">
+          <div style="flex:1"><label class="text-xs font-medium block mb-1.5" style="color:var(--muted)">Simbol</label><input type="text" id="cfg-symbol" value="NUSA" maxlength="6" placeholder="mis. NUSA"></div>
+          <div style="flex:1"><label class="text-xs font-medium block mb-1.5" style="color:var(--muted)">Desimal</label><input type="number" id="cfg-decimals" value="18" min="0" max="18"></div>
+        </div>
+        <div><label class="text-xs font-medium block mb-1.5" style="color:var(--muted)">Total Supply</label><input type="number" id="cfg-supply" value="1000000000" min="1"></div>
+        <div><label class="text-xs font-medium block mb-1.5" style="color:var(--muted)">Standar / Jaringan</label>
+          <select id="cfg-network">
+            <option value="Ethereum · ERC-20">Ethereum · ERC-20 (paling matang, gas tinggi)</option>
+            <option value="BNB Chain · BEP-20">BNB Chain · BEP-20 (biaya rendah, cepat)</option>
+            <option value="TRON · TRC-20">TRON · TRC-20 (biaya rendah, throughput tinggi)</option>
+            <option value="Solana · SPL">Solana · SPL (kecepatan tinggi, biaya mikro)</option>
+            <option value="Polygon · ERC-20">Polygon · ERC-20 (L2, biaya rendah)</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="deploy-btn">Simulasi Deploy Kontrak</button>
+        <div id="deploy-out" class="text-xs rounded-lg p-3 mt-2 mono" style="background:#1a1a1e;border:1px solid var(--border);line-height:1.8;color:var(--muted);display:none"></div>
+      </div>
+      <div style="flex:1 1 260px;min-width:240px">
+        <p class="text-xs font-medium mb-3 m-0" style="color:var(--muted)">Preview Token</p>
+        <div class="rounded-2xl p-6" style="background:linear-gradient(135deg,#2a2a2f 0%,#1a1a1e 100%);border:1px solid var(--border)">
+          <div class="flex items-center gap-4 mb-5">
+            <div style="width:56px;height:56px;border-radius:16px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#1a1a1e;font-weight:700;font-size:24px" id="pv-letter">N</div>
+            <div>
+              <p class="font-bold text-lg m-0" id="pv-name">Nusantara Coin</p>
+              <p class="text-xs m-0 mt-1 mono" style="color:var(--muted)" id="pv-symbol">NUSA</p>
+            </div>
+          </div>
+          <div class="space-y-2.5 text-sm">
+            <div class="flex justify-between"><span style="color:var(--muted)">Total Supply</span><span class="font-medium" id="pv-supply">1.000.000.000</span></div>
+            <div class="flex justify-between"><span style="color:var(--muted)">Desimal</span><span class="font-medium" id="pv-decimals">18</span></div>
+            <div class="flex justify-between"><span style="color:var(--muted)">Jaringan</span><span class="font-medium text-right" style="font-size:12px" id="pv-network">Ethereum · ERC-20</span></div>
+            <div class="flex justify-between"><span style="color:var(--muted)">Standar Kontrak</span><span class="font-medium mono" style="font-size:12px">OpenZeppelin v5</span></div>
+          </div>
+          <div class="mt-5 pt-4 text-xs" style="border-top:1px solid var(--border);color:var(--accent2)">Fitur: Mintable · Burnable · Pausable · Snapshot</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: TOKENOMICS -->
+  <div class="tab-panel reveal rounded-2xl p-6 md:p-8 mb-6" id="tokenomics" style="background:var(--card);border:1px solid var(--border);display:none">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <h2 class="text-lg font-semibold m-0">Alokasi &amp; Distribusi Token</h2>
+      <div class="text-sm">Total: <span id="alloc-total" class="font-bold" style="color:var(--accent2)">100</span><span style="color:var(--muted)">%</span> <span class="text-xs" style="color:var(--muted)">(target 100%)</span></div>
+    </div>
+    <div class="flex flex-wrap gap-6">
+      <div style="flex:1 1 300px;min-width:260px" class="space-y-4" id="alloc-sliders"></div>
+      <div style="flex:1 1 300px;min-width:260px"><div id="tokenomics-pie" style="height:340px;width:100%"></div></div>
+    </div>
+    <div class="mt-6 pt-5 text-xs" style="border-top:1px solid var(--border);color:var(--muted);line-height:1.7">
+      <strong style="color:var(--text)">Jadwal Vesting:</strong> Tim Inti &amp; Investor — cliff 12 bulan, unlock linear 36 bulan. Komunitas &amp; Ekosistem — bertahap per kuartal. Likuiditas — terkunci minimal 24 bulan. Treasury — dikelola multisig.
+    </div>
+  </div>
+
+  <!-- PANEL: AUDIT -->
+  <div class="tab-panel reveal rounded-2xl p-6 md:p-8 mb-6" id="audit" style="background:var(--card);border:1px solid var(--border);display:none">
+    <h2 class="text-lg font-semibold mb-2 mt-0">Checklist Audit &amp; Kepatuhan</h2>
+    <p class="text-xs mb-5 m-0" style="color:var(--muted)">Centang item yang sudah selesai — progress bar diperbarui otomatis.</p>
+    <div class="w-full rounded-full h-2.5 mb-3" style="background:#1a1a1e;overflow:hidden">
+      <div id="audit-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .4s ease"></div>
+    </div>
+    <div class="flex items-center justify-between mb-5 text-sm"><span style="color:var(--muted)">Progress kepatuhan</span><span class="font-bold" id="audit-pct">0%</span></div>
+    <div class="grid gap-3" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))" id="audit-list"></div>
+    <div class="mt-6 p-4 rounded-xl text-xs" style="background:var(--accent-soft);border:1px solid var(--accent);color:var(--text);line-height:1.7">
+      <strong style="color:var(--accent)">Catatan kepatuhan:</strong> Sebelum penawaran token ke publik di Indonesia, wajib penuhi ketentuan Bappebti (Perdagangan Aset Kripto) dan konsultasi penasihat hukum terkait status sekuritas/OJK serta kewajiban KYC/AML. Materi ini bersifat edukatif — bukan saran investasi.
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="mt-10 pt-6 text-center text-xs" style="border-top:1px solid var(--border);color:var(--muted);line-height:1.8">
+    TokenForge GitHub App · Konsol simulasi pengembangan token · Selalu audit kontrak oleh pihak ketiga sebelum mainnet.<br>
+    Edukatif — bukan saran investasi atau ajakan membeli token.
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+  /* ---- TABS ---- */
+  var btns=document.querySelectorAll('.tab-btn');
+  var panels=document.querySelectorAll('.tab-panel');
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      btns.forEach(function(x){x.classList.remove('active')});
+      b.classList.add('active');
+      var t=b.getAttribute('data-tab');
+      panels.forEach(function(p){p.style.display=(p.id===t)?'block':'none'});
+      if(t==='tokenomics' && window.__initTokenChart){window.__initTokenChart()}
+    });
+  });
+
+  /* ---- KONFIGURASI + PREVIEW + DEPLOY SIM ---- */
+  var f=document.getElementById('cfg-name'),s=document.getElementById('cfg-symbol'),
+      d=document.getElementById('cfg-decimals'),sup=document.getElementById('cfg-supply'),
+      net=document.getElementById('cfg-network');
+  function upd(){
+    document.getElementById('pv-name').textContent=f.value||'Nama Token';
+    document.getElementById('pv-symbol').textContent=(s.value||'TKN').toUpperCase();
+    document.getElementById('pv-letter').textContent=(s.value||'T').charAt(0).toUpperCase();
+    document.getElementById('pv-supply').textContent=Number(sup.value||0).toLocaleString('id-ID');
+    document.getElementById('pv-decimals').textContent=d.value||18;
+    document.getElementById('pv-network').textContent=net.options[net.selectedIndex].text;
+    document.getElementById('kpi-network').textContent=net.value;
+  }
+  [f,s,d,sup,net].forEach(function(el){if(!el)return;el.addEventListener('input',upd);el.addEventListener('change',upd)});
+  upd();
+
+  var btn=document.getElementById('deploy-btn'),out=document.getElementById('deploy-out');
+  btn.addEventListener('click',function(){
+    function hex(len){var r='';for(var i=0;i<len;i++)r+='0123456789abcdef'[Math.floor(Math.random()*16)];return r}
+    out.style.display='block';
+    out.innerHTML='<span style="color:#4ade80">✓ Simulasi deploy berhasil</span><br>Kontrak: 0x'+hex(40)+'<br>Tx Hash: 0x'+hex(64)+'<br><span style="color:var(--muted)">Simulasi lokal — bukan transaksi nyata. Hubungkan wallet &amp; bayar gas untuk deploy sesungguhnya.</span>';
+  });
+
+  /* ---- TOKENOMICS SLIDERS + PIE ---- */
+  var labels=['Tim Inti','Investor','Komunitas & Airdrop','Likuiditas','Treasury','Ekosistem'];
+  var defaults=[15,20,25,15,15,10];
+  var colors=['#c47046','#7ba8b8','#b8a87b','#8fae9a','#c49a7b','#a87b6b'];
+  var wrap=document.getElementById('alloc-sliders');
+  var html='';
+  for(var i=0;i<6;i++){
+    html+='<div><div class="flex justify-between mb-1.5 text-sm"><span>'+labels[i]+'</span><span id="alloc-val-'+i+'" class="mono" style="color:var(--accent2)">'+defaults[i]+'%</span></div><input type="range" class="alloc-slider" id="alloc-'+i+'" min="0" max="60" value="'+defaults[i]+'"></div>';
+  }
+  wrap.innerHTML=html;
+
+  function readVals(){var v=[],t=0;for(var i=0;i<6;i++){var el=document.getElementById('alloc-'+i);var val=parseFloat(el?el.value:0)||0;v.push(val);t+=val}return{v:v,total:t}}
+  function render(){
+    var r=readVals();
+    for(var i=0;i<6;i++){var el=document.getElementById('alloc-val-'+i);if(el)el.textContent=r.v[i].toFixed(0)+'%'}
+    var tot=document.getElementById('alloc-total');
+    tot.textContent=r.total.toFixed(0);
+    tot.style.color=(Math.abs(r.total-100)<0.5)?'var(--accent2)':'#f87171';
+    if(window.__tokenChart){
+      var data=[];
+      for(var j=0;j<6;j++){data.push({name:labels[j],value:r.v[j],itemStyle:{color:colors[j]}})}
+      window.__tokenChart.setOption({
+        backgroundColor:'transparent',
+        tooltip:{trigger:'item',backgroundColor:'#1a1a1e',borderColor:'rgba(232,229,223,.12)',textStyle:{color:'#e8e5df'},formatter:'{b}: {c}% ({d}%)'},
+        legend:{bottom:0,textStyle:{color:'#9a978f',fontSize:11},itemWidth:12,itemHeight:12},
+        series:[{type:'pie',radius:['42%','68%'],center:['50%','44%'],avoidLabelOverlap:true,itemStyle:{borderColor:'#2a2a2f',borderWidth:2},label:{show:false},emphasis:{label:{show:true,color:'#e8e5df',fontSize:13,fontWeight:600}},data:data}]
+      });
+    }
+  }
+  for(var k=0;k<6;k++){var sl=document.getElementById('alloc-'+k);if(sl)sl.addEventListener('input',render)}
+  window.__initTokenChart=function(){
+    if(window.__tokenChart)return;
+    (function init(n){
+      if(typeof echarts==='undefined'){if(n<40){setTimeout(function(){init(n+1)},250)}return}
+      var el=document.getElementById('tokenomics-pie');if(!el)return;
+      window.__tokenChart=echarts.init(el);
+      render();
+      window.addEventListener('resize',function(){window.__tokenChart.resize()});
+    })(0);
+  };
+  render();
+
+  /* ---- AUDIT CHECKLIST ---- */
+  var items=['Smart contract diaudit pihak ketiga','Unit test coverage ≥ 95%','Reentrancy guard terpasang','Ownership renounce / timelock','Liquidity pool terkunci ≥ 24 bln','Whitepaper & tokenomics dipublikasi','KYC/AML untuk investor (OJK)','Konsultasi hukum status sekuritas','Lapor Bappebti (aset kripto)','Bug bounty program aktif','Verifikasi kontrak di explorer','Dokumentasi API & GitHub lengkap'];
+  var awrap=document.getElementById('audit-list');
+  var ahtml='';
+  for(var z=0;z<items.length;z++){
+    ahtml+='<label class="flex items-start gap-3 p-3 rounded-lg cursor-pointer tbl-row" style="border:1px solid var(--border)"><input type="checkbox" class="audit-check mt-0.5" '+(z<5?'checked':'')+'><span class="text-sm" style="color:var(--text);line-height:1.5">'+items[z]+'</span></label>';
+  }
+  awrap.innerHTML=ahtml;
+  var boxes=document.querySelectorAll('.audit-check');
+  var bar=document.getElementById('audit-bar'),txt=document.getElementById('audit-pct');
+  function updAudit(){var c=0;boxes.forEach(function(b){if(b.checked)c++});var pct=Math.round(c/boxes.length*100);bar.style.width=pct+'%';txt.textContent=pct+'%'}
+  boxes.forEach(function(b){b.addEventListener('change',updAudit)});
+  updAudit();
+
+});
+</script>
+</body>
+</html>
